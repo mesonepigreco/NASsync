@@ -13,8 +13,8 @@ MD5HASH = "md5"
 NAME = "name"
 FULL_PATH = "full_path"
 MOD_TIME = "last_time"
-TYPE = "type"
-DIR_CONTENT = "content"
+TYPE = "file_type"
+DIR_CONTENT = "the_content"
 
 class Directory:
 
@@ -30,6 +30,8 @@ class Directory:
 
         self.path = ""
         self.total_info = {}
+
+        self.exclude_hidden_files = True
         
 
     def setup_new_directory(self, path):
@@ -84,6 +86,10 @@ class Directory:
 
         all_files = os.listdir(relative_path)
 
+        # Exclude the hidden files
+        if self.exclude_hidden_files:
+            all_files = [x for x in all_files if not x.startswith(".")]
+
         if len(all_files) == 0:
             return
 
@@ -126,9 +132,8 @@ def analyze_file(path):
 
         infofile[LAST_EDIT] = os.path.getmtime(path)
 
-
-    md5_hash.update(content)
-    infofile[MD5HASH] = md5_hash.hexdigest()
+        md5_hash.update(content)
+        infofile[MD5HASH] = md5_hash.hexdigest()
 
     # Get the file name
     path_split = os.path.split(path)
