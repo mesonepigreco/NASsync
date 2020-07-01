@@ -108,7 +108,7 @@ class Directory:
         
         return data_in_dir
 
-def analyze_file(path):
+def analyze_file(path, get_md5 = True):
     """
     Provide the full dictionary that identifies the given file
     """
@@ -125,15 +125,16 @@ def analyze_file(path):
         infofile[TYPE] = "file"
         
         # Get the md5hash
-        md5_hash = hashlib.md5()
-        fp = open(path, "rb")
-        content = fp.read()
-        fp.close()
+        if get_md5:
+            md5_hash = hashlib.md5()
+            fp = open(path, "rb")
+            content = fp.read()
+            fp.close()
+            md5_hash.update(content)
+            infofile[MD5HASH] = md5_hash.hexdigest()
 
         infofile[LAST_EDIT] = os.path.getmtime(path)
 
-        md5_hash.update(content)
-        infofile[MD5HASH] = md5_hash.hexdigest()
 
     # Get the file name
     path_split = os.path.split(path)
