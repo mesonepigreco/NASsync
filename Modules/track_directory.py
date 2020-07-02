@@ -5,6 +5,7 @@ import sys, os
 import hashlib
 import json
 
+import time, datetime
 
 
 # DEFINE THE NAMES OF THE CHECKS
@@ -133,7 +134,7 @@ def analyze_file(path, get_md5 = True):
             md5_hash.update(content)
             infofile[MD5HASH] = md5_hash.hexdigest()
 
-        infofile[LAST_EDIT] = os.path.getmtime(path)
+        infofile[LAST_EDIT] = int(os.path.getmtime(path))
 
 
     # Get the file name
@@ -146,3 +147,91 @@ def analyze_file(path, get_md5 = True):
 
 
     return infofile
+
+
+def analyze_directory_ssh(ssh_connect, path, pwd = None):
+    """
+    Get the info on the files through an ssh connection inside the directory.
+
+    Parameters
+    ----------
+        ssh_connect: paramiko.SSHClient()
+            A ssh client with the connection already opened.
+        path: string
+            The path to the directory in the server to be analyzed.
+        pwd : string (or None)
+            If a string, then the password is passed to the ssh command.
+    
+    Returns
+        infodict : dict
+            The dictionary with the analysis of the directory.
+    """
+
+    stdin, stdout, stderr = ssh_connect.exec_command(r"ls -l --time-style=+%s  " + path)
+    
+    # Write the password
+    if not pwd is None:
+        stdin.write("{}\n".format(pwd))
+
+    return analyze_with_ls(stdout, stderr, total_path = path)
+
+def analyze_with_ls(stdout, stderr, total_path):
+    """
+    Analyze the output of 
+    ls -l --time-style=+%s
+    command from a unix shell
+
+    Parameters
+    ----------
+        stdout : string
+            The output that comes from a ls -lt command
+        stderr : string
+            The error that comes from a ls -lt command
+        total_path : string
+            The path of the directory that we are analyzing
+    
+    Returns
+    -------
+        fileinfo : list
+            The list of dictionaries with the files. Directories are just listed by names.
+    """
+
+
+    # TODO: Check if the directory exists, and it did not crashed    
+
+
+    # Analyze the output
+    lines = stdout.split("\n")
+    
+    all_components = []
+
+    for line in lines:
+        data = line.split()
+
+        # Keep only good data
+        if len(data != 7):
+            continue 
+
+        filedata = {}
+
+        # Check if the line refers to a directory or a file
+        if data[0][0] == "d":
+            filedata[TYPE] = "directory"
+        else:
+            filedata[TYPE] = "file"
+        
+        try:
+            # Get the date
+            filedata[LAST_EDIT] = int(data+[-2])
+
+            # Get the full path
+            filedata[FULL_PATH] = total_path
+
+            filedata[NAME] = data[-1]
+
+            all_components.append(filedata)
+        except:
+            print("Unrecognized line:", line)
+            raise ValueError("Error while parsing ls output.")
+
+    return all_components
